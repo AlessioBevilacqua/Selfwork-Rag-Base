@@ -12,6 +12,54 @@ api_key = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=api_key)
 
+def estrai_info_con_openai(testo):
+    client = OpenAI(api_key=api_key)
+    prompt = f"""
+    Estrai le seguenti informazioni dal testo:
+    - nome completo
+    - email
+    - numero di telefono
+
+    Restituisci solo un dizionario JSON nel formato:
+    {{"nome": "...", "email": "...", "phone": "..."}}
+
+    Testo: {testo}
+    """
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    return response.choices[0].message.content
+
+def carica_documenti(directory="resumes"):
+    documents = []
+    metadatas = []
+    ids = []
+    current_id = 0
+
+    for filename in os.listdir(directory):
+        if not filename.endswith(".txt"):
+            continue
+
+        path = os.path.join(directory, filename)
+
+        with open(path, "r") as file:
+            contenuto = file.read().replace("\n", ".")
+            chunks = contenuto.split("### ")
+            info_principale = chunks[1] if len(chunks) > 1 else ""
+
+            for chunk in chunks:
+                if chunk.strip():
+                    documents.append(chunk)
+                    metadatas.append({"source": filename, "info": info_principale})
+                    ids.append(str(current_id))
+                    current_id += 1
+
+    return documents, metadatas, ids
+
+documents, metadatas, ids = carica_documenti()
+
 openai_ef = embedding_functions.OpenAIEmbeddingFunction(
     api_key=api_key,
     model_name="text-embedding-3-small"
